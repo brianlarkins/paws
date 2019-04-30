@@ -1,0 +1,116 @@
+problem: completed > spawned
+  - approach #1:
+     make bitvec and mark off every task id that you spawn
+     when completing a task, add second mark.
+     determine which tasks are being double-completed
+     find out where they came from and were duplicated
+  - approach #2:
+     check PtlGet steals and print every startid + rank
+       of chunk stolen
+     see if there are duplicates
+  - approach #3:
+     review release/reacquire code to see what happens
+     on boundaries
+  - approach #4:
+     check clean_matchpairs to see if we're hitting 
+     in-use code
+     check assertion that mplist & ME list are both empty
+  - hypothesis:
+    task has ME and is local at the same time. a steal
+    happens after we reacquire work
+
+  - hacks:
+    wrap disable around reacquire code
+    fix pop_tail() to handle disable case
+    
+    make release ignore the case where only one
+    task is in queue
+
+
+problem: pop_tail() taking much longer than baseline
+   - baseline only uses one ME for entire queue
+   - sh uses more MEs per queue
+
+problem: reclaim() is called too many times
+   - try to ensure more than we need, so that
+     we only reclaim every nth time
+   (ensure 10 free, will allow us to call 1/10th the time)
+     
+
+
+get_buf:                                                 (AA)
+  baseline:
+    8 - TSC: get: 6353M (538 x 11805759)
+    9 - TSC: get: 5132M (564 x  9087216)
+  half:
+    8 - TSC: get: 7039M (683 x 10299982)
+    9 - TSC: get: 8006M (666 x 12005233)
+
+  progress function:                                     (BB)
+      baseline:
+        8 - TSC: progress: 3362M (284 x 11806107)
+        9 - TSC: progress: 2226M (244 x  9087773)
+      half:
+        8 - TSC: progress: 3841M (372 x 10300270)
+        9 - TSC: progress: 4633M (385 x 12005312)
+
+       releasing local work to shared portion
+         baseline:
+           8 - TSC: release: 636M (10607065 x  60)
+           9 - TSC: release: 399M ( 3731278 x 107)
+         half:
+           8 - TSC: release: 415M ( 4828549 x  86)
+           9 - TSC: release: 503M ( 3704544 x 136)
+
+       reclaiming space in the queue                     (CC)
+          (handling deferred copies in baseline, 
+             checking event queue in SH)
+         baseline:
+           8 - TSC: reclaim:  561M  (47 x 11806107) - !!!! 
+           9 - TSC: reclaim:  489M  (53 x  9087773) - !!!!
+         half:
+           8 - TSC: reclaim: 3624M (175 x 20600411) - !!!! this is very bad
+           9 - TSC: reclaim: 3716M (154 x 24010764) - !!!! 
+
+  if local work, may call reacquire:
+         baseline:
+           8 - TSC: reacquire: 357M (3032887 x 118)
+           9 - TSC: reacquire: 879M (4627622 x 190)
+         half:
+           8 - TSC: reacquire:  25M ( 159065 x 158) - !!!! this is good
+           9 - TSC: reacquire:  21M ( 101000 x 216) - !!!!
+
+  else may call pop_tail:                                (DD)
+         baseline:
+           8 - TSC: poptail:   2M - missing/wrong accounting
+           9 - TSC: poptail:  27M - missing/wrong accounting
+         half:
+           8 - TSC: poptail: 451M - calls 288 steals: 19, no work: 269 - !!!! this is bad
+           9 - TSC: poptail: 467M - calls  79 steals: 33, no work:  46 - !!!!
+
+
+adding a task:                                           (EE)
+  baseline:
+    8 - TSC: add: 4833M (409 x 11805774)
+    9 - TSC: add: 5150M (566 x  9087234)
+  half:
+    8 - TSC: add: 8300M (805 x 10299963)
+    9 - TSC: add: 7578M (631 x 12005202)
+
+       ensuring enough space to add a task
+         baseline:
+           8 - TSC: ensure: 609M  ( 51 x 11805787)
+           9 - TSC: ensure: 558M  ( 61 x  9087257)
+         half:
+           8 - TSC: ensure: 3297M (320 x 10299982)
+           9 - TSC: ensure: 3310M (275 x 12005235)
+
+              reclaiming space in the queue 
+                (deferred copies in baseline, 
+                   checking event queue in SH)
+                baseline:
+                  8 - TSC: reclaim: 561M   (47 x 11806107)
+                  9 - TSC: reclaim: 489M   (53 x  9087773)
+                half:
+                  8 - TSC: reclaim: 3624M (175 x 20600411)
+                  9 - TSC: reclaim: 3716M (154 x 24010764)

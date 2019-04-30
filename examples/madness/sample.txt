@@ -1,0 +1,37 @@
+   39 - Tasks: completed  64, spawned  64, stolen   5
+   39 -      : nsteals   5, steal fails -- 15140, aborted   0
+   39 -  Time: process 14.69221s = active 11.30638s + passive  3.38584s, passive
+count=6 (564.30625ms avg), searching  0.00573s ( 0.04 %)
+   39 -      : dispersion 758.95046ms, disp. steal fails -- unlocked 954, locked 0
+   39 -      : avg acquire 18.08112ms, imbalance 2481.78166ms
+   39 -      : timers: 28.42666ms 3337.10659ms  0.00000ms  0.00000  0.00000ms
+   39 -     Steal-N: nrelease     10, nreacquire      9, nreclaimed     10 (843 att), nprogress  15274 nensure     69
+   39 -            : failed steals:  15140, disabled steals:      0 maxqsize: 15 max_steal: 2049
+   39 -            : gets:  15145 ( 1.88us/get), steals:      5, neoq:  15140 disabled:      0 dropped:      0 mpseek: 1.00000
+   39 -            : total: 3365.53 ms steals: 28.43 ms fails: 3337.11 release: 0.00 ms acquire:  0.00
+   39 - TSC: get: 7787M (119807515 x 65)  add: 0M (0 x 64) inplace: 1007M (15747747)
+   39 - TSC: addfinish: 6712M (439473) progress: 2M (164 x 15274) reclaim: 0M (155 x 843)
+   39 - TSC: ensure: 0M (169 x 69) release: 1M (100252 x 10) reacquire: 0M (4481 x 9)
+   39 - TSC: pushhead: 0M (0) poptail: 7724M (510011 x 15145)
+Total  : stolen 415, steals 369 Average: stolen  10, steals   9
+Time   : worst dispersion 772.36585ms, worst imbalance 3071.27942ms, best
+imbalance 47.09459ms, avg acquire 127.34742ms, avg search  0.00529s ( 0.00 %)
+   SNH:  nrelease:    726 nreacq:    627 nprogress: 616863
+   SNH:  avg release:     18 avg reacq:     15 avg progress:  15421
+   SNH:  gettime: avg:  5.21 us max: 43.66 us min:  0.03 us maxchunk: 15
+SCIOTO : Process time 14.70169 s, passive time 3.21924 s (21.90%), 4681 tasks
+completed, 318.40 tasks/sec (7.96 tasks/sec/PE)
+
+
+SCIOTO:  Process time %% s, active time %% + passive time  %% (%%overhead %),  
+         Tasks completed: %% (min/max/avg), %%totrate (%%totrate/size)
+         dispersion: %% (min/max/avg) 
+         imbalance:  %% (min/max/avg)
+         gets:       %%
+           steals:     %% (min/max/avg) 
+           fails:      %% (min/max/avg)
+         progress: tot: (min/max/avg)  time: (min/max/avg)  percall: (min/max/avg)
+         reclaim:
+         ensure:
+         reacq:
+         release:

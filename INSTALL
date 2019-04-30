@@ -1,0 +1,101 @@
+Requirements:
+  libev-4.2x: ./configure --prefix=$HOME/opt; make -j 10 install
+
+  portals4: master dist _should_ work fine with configure line, if not:
+     git clone https://github.com/Portals4/portals4.git
+     cd portals4
+     git remote add dblarkins https://github.com/dblarkins/portals4.git
+     git fetch dblarkins
+     git checkout dev/pdht-portals
+     ./autogen.sh
+     ./configure --prefix=$HOME/opt --with-ev=$HOME/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --enable-unordered-matching
+     make -j 10 install
+
+Configuring/Compiling:
+
+  On systems with ummunotify, comment the PTL_IGNORE_UMMUNOTIFY line in libtc/init.c
+
+  Edit libtc/tc.h and set TC_CPU_HZ accordingly. Get your MHZ speed from /proc/cpuinfo 
+  on a compute node. Verify that the timer sanity check in the global output matches.
+  
+  To build the runtime and tests, just run make at the top level. To run benchmarks
+  just build in the directory for the bench.
+
+Troubleshooting:
+
+  By default, Sciotwo dumps backtraces on non-assertion faults. There is also a 
+  global array of integers (__gtc_marker[5]) which can be set in the code to track
+  progress and is dumped on Ctrl-C or segfault.
+
+Running:
+
+  Environment variables:
+    SCIOTO_DISABLE_PERNODE_STATS - set if you want to suppress per-node counter and timer data
+    
+    SCIOTO_CORE_BINDING - can be set to control how tasks and Portals progress threads are bound
+                          to cores. you _must_ be on the dblarkins Portals branch to use this
+                        - "none"   - no core binding is done (default)
+                        - "core"   - one core per node is dedicated to Portals progress (highest core id)
+                        - "socket" - one core per socket for progress (assumes 2 socket nodes)
+                        - "equal"  - odd cores are for tasks, even cores for corresponding progress threads.
+
+     Core binding SLURM param examples (assume 24 cores/node, 2 sockets)
+        none:
+            srun -n 48 --ntasks-per-node=24 env SCIOTO_CORE_BINDING=none ./myprog
+        core:
+            srun --cpu_bind=cores -m block:block -n 46 --ntasks-per-node=23 --exclusive env SCIOTO_CORE_BINDING=core ./myprog
+        socket:
+            srun --cpu_bind=cores -m block:block -n 44 --ntasks-per-node=22 --exclusive env SCIOTO_CORE_BINDING=socket ./myprog
+        equal:
+            srun --cpu_bind=cores -m block:block -n 22 --ntasks-per-node=11 --exclusive env SCIOTO_CORE_BINDING=equal ./myprog
+
+    GTC_RECLAIM_FREQ - determines how often steal-half should call reclaim() to check the event queue
+                       this should be 1 for BPC/MADNESS (larger/fewer tasks) and 20 for UTS (smaller/many tasks)
+
+  Sanity check:
+
+  $ cd tests
+  $ srun -n 2 ./test-task -n 1000 -t 1000 -B  # baseline 1000 tasks, 1000us/task
+  $ srun -n 2 ./test-task -n 1000 -t 1000 -N  # steal-n
+  $ srun -n 2 ./test-task -n 1000 -t 1000 -H  # steal-half
+
+  BPC:
+
+  $ cd examples/bpc
+  $ ./busy_wait
+  update "busy_val" variable with NITER output from busy_wait
+  $ srun -n 2 ./bpc -b -B # baseline, with bouncing
+  $ srun -n 2 ./bpc -H    # steal-half, no bouncing
+
+     -d maxdepth (default=5000)
+     -n nchildren (default=10), consumers=10ms, producers=1ms
+    
+     total tasks = maxdepth+1 producers + (10*maxdepth) consumers (default 550001)
+  
+  UTS:
+
+  $ cd examples/iterators/uts
+  $ . ./sample_trees.h  # defines workload variables, look at script
+  $ srun -n 2 ./uts-scioto $T1 -Q B    # small workload, baseline
+  $ srun -n 2 ./uts-scioto $T1L -Q H   # moderate, steal-half
+    
+     see examples/iterators/uts/sample_trees.sh for all tree/workload sizes (4M to 300B tasks/nodes)
+
+  MADNESS:
+  
+  $ cd examples/madness
+  $ srun -n 2 ./mad3d -t .01 -l 5 -B # baseline, refinement thresh .01, initial refinement level=5
+  $ srun -n 2 ./mad3d -H             # steal-half
+
+  smaller refinement thresh => increasing workload
+  
+  8^refinement_level = initial tasks 
+  8^5 = 32K tasks - 37449 total tasks
+
+  -t .01 -i 5 takes ~10 sec on 350 cores on comet. 
+
+Implementation Notes:
+
+  ARMCI baseline queue - mostly in sdc_shr_ring.c, also collection-sdc.c
+  Steal-N - mostly in sn_ring.c, sn_common.c, also collection-steal-n.c
+  Steal-Half- collection-steal-n.c, sn_common.c, overloaded functions in sh_ring.c

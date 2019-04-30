@@ -1,0 +1,10 @@
+#!/bin/bash
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/opt/lib
+cd $HOME
+git clone https://github.com/Portals4/portals4.git
+cd $HOME/portals4
+git remote add dblarkins https://github.com/dblarkins/portals4.git
+git fetch dblarkins
+git checkout dev/pdht-portals
+./autogen.sh
+./configure --prefix=$HOME/opt --with-ev=$HOME/opt --enable-transport-ib --enable-fast --enable-zero-mrs --enable-me-triggered --enable-unordered-matching
